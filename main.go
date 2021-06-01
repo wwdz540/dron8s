@@ -26,7 +26,9 @@ import (
 
 func main() {
 	// Lookup for env variable `PLUGIN_KUBECONFIG`.
+	fmt.Print("---start deploy to  k8s---")
 	kubeconfig, exists := os.LookupEnv("PLUGIN_KUBECONFIG")
+	fmt.Printf("init dronk8s %s \n", kubeconfig)
 	switch exists {
 	// If it does exists means user intents for out-of-cluster usage with provided kubeconfig
 	case true:
@@ -71,6 +73,7 @@ func main() {
 
 // https://ymmt2005.hatenablog.com/entry/2020/04/14/An_example_of_using_dynamic_client_of_k8s.io/client-go#Go-client-libraries
 func ssa(ctx context.Context, cfg *rest.Config) error {
+	fmt.Println("ssa")
 	var decUnstructured = yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
 	// 1. Prepare a RESTMapper to find GVR
@@ -92,6 +95,8 @@ func ssa(ctx context.Context, cfg *rest.Config) error {
 		return err
 	}
 
+	fmt.Printf("yaml content: %s \n", yaml)
+
 	// convert it to string
 	text := string(yaml)
 	// Parse variables
@@ -102,6 +107,8 @@ func ssa(ctx context.Context, cfg *rest.Config) error {
 		return err
 	}
 	text = b.String()
+
+	fmt.Printf("parsed:%s \n", text)
 	// Parse each yaml from file
 	configs := strings.Split(text, "---")
 	// variable to hold and print how many yaml configs are present
@@ -148,9 +155,24 @@ func ssa(ctx context.Context, cfg *rest.Config) error {
 		}
 
 		fmt.Println("Applying config #", i)
+
+		// dr.Delete(ctx,obj.GetName(),metav1.DeleteOptions{
+
+		// },string(data))
+
 		// 7. Create or Update the object with SSA
 		//     types.ApplyPatchType indicates SSA.
 		//     FieldManager specifies the field owner ID.
+		fmt.Println("delete deployment .... ")
+		fmt.Printf("objname %s\n", obj.GetName())
+		err = dr.Delete(ctx, obj.GetName(), metav1.DeleteOptions{})
+		if err != nil {
+			fmt.Println("delete deployment error ")
+			return err
+		}
+
+		//	dr.DeleteCollection(ctx , metav1.DeleteOptions{},)
+
 		_, err = dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
 			FieldManager: "dron8s-plugin",
 		})
